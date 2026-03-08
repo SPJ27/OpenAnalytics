@@ -123,7 +123,7 @@ Once installed, OpenAnalytics will:
 
 You can then use the returned data to build **custom dashboards, charts, and analytics panels** for your applications.
 
-
+## Response by /api/stats
 ```js
 {
     "success": true,
