@@ -123,3 +123,82 @@ Once installed, OpenAnalytics will:
 
 You can then use the returned data to build **custom dashboards, charts, and analytics panels** for your applications.
 
+
+```js
+{
+    "success": true,
+    "data": {
+        "totalVisits": 5,
+        "uniqueVisitors": 2,
+        "totalSessions": 4,
+        "bounceRate": "25.0%",
+        "avgVisitsPerUser": "2.50",
+        "avgTimeSpent": "3621.60",
+        "visitedPages": {
+            "/": 4,
+            "/abc": 1
+        },
+        "countries": {
+            "India": 5
+        },
+        "cities": {
+            "Nagpur": 5
+        },
+        "devices": {
+            "Desktop": 2
+        },
+        "browsers": {
+            "Chrome": 2
+        },
+        "oses": {
+            "Windows": 2
+        },
+        "referrers": {
+            "Direct": 5
+        },
+        "graph": [
+            {
+                "label": "Mar 1",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 2",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 3",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 4",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 5",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 6",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 7",
+                "visits": 0,
+                "users": 0
+            },
+            {
+                "label": "Mar 8",
+                "visits": 5,
+                "users": 2
+            }
+        ],
+        "bucketMode": "day"
+    }
+}
+````

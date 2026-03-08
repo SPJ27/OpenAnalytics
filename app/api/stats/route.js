@@ -176,5 +176,5 @@ export async function GET(req) {
     bucketMode,    
   };
 
-  return Response.json({ success: true, data, users, visits });
+  return Response.json({ success: true, data });
 }
