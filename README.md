@@ -2,203 +2,265 @@
 
 ## What is OpenAnalytics?
 
-**OpenAnalytics** is an open-source analytics API that developers can run on their own infrastructure to reduce costs and gain detailed insights into their website or application traffic.
+**OpenAnalytics** is a lightweight **open-source analytics API** that developers can self-host to track website or application traffic.
 
-Instead of relying on expensive third-party analytics platforms, OpenAnalytics lets you fully control your data while still getting powerful analytics metrics and structured datasets for dashboards and visualizations.
+Instead of relying on expensive third-party analytics platforms, OpenAnalytics allows you to **own your analytics infrastructure and data** while still getting powerful metrics and structured insights.
 
-### Available Analytics Data
+It is designed to be **simple to deploy, easy to integrate, and flexible for custom dashboards**.
 
-OpenAnalytics provides a wide range of useful statistics:
+---
 
-1. **Visits** – Total number of page visits  
-2. **Unique Visitors** – Distinct users visiting the site  
-3. **Bounce Rate** – Percentage of users leaving after one interaction  
-4. **Total Sessions** – Total tracked sessions  
-5. **Average Visits per User** – Engagement metric per user  
-6. **Average Time Spent** – Average session duration  
-7. **Visited Pages** – Most visited routes or pages  
-8. **Visitor Information**
-   - Country
-   - City
-   - Device type
-   - Browser
-   - Operating system
-9. **Referrer Data** – Source of incoming traffic  
-10. **Visualization Data** – Pre-formatted data with automatic day, month and week headers compatible with libraries like:
-   - **Recharts**
-   - **Chart.js**
+# Features
+
+OpenAnalytics provides a wide range of analytics metrics:
+
+### Traffic Metrics
+
+* **Visits** – Total number of page visits
+* **Unique Visitors** – Number of distinct users
+* **Total Sessions** – Total tracked browsing sessions
+* **Bounce Rate** – Percentage of users leaving after one interaction
+
+### Engagement Metrics
+
+* **Average Visits per User**
+* **Average Time Spent per Session**
+* **Most Visited Pages**
+
+### Visitor Information
+
+OpenAnalytics collects useful contextual data such as:
+
+* **Country**
+* **City**
+* **Device Type**
+* **Browser**
+* **Operating System**
+
+### Traffic Sources
+
+* **Referrer Tracking** – Identify where users are coming from (Direct, Search, Social, etc.)
+
+### Visualization Ready Data
+
+The `/api/stats` endpoint returns **pre-structured datasets** compatible with charting libraries like:
+
+* **Recharts**
+* **Chart.js**
+* **ECharts**
+* **D3.js**
+
+Graph data is automatically formatted with **day / week / month buckets**.
+
+---
+
+# Architecture
+
+OpenAnalytics works in four simple steps:
+
+1. **tracker.js** records user activity in the browser
+2. Data is sent to **`/api/track`**
+3. Analytics data is stored in your **PostgreSQL database**
+4. Insights are retrieved through **`/api/stats`**
+
+This allows developers to build **custom analytics dashboards** easily.
 
 ---
 
 # Installation
 
-There are **four main components** required to install OpenAnalytics.
+OpenAnalytics consists of **four main components**.
 
-## 1. Database Schema
+---
 
-Run the database schema in your preferred database.
+# 1. Database Setup
+
+Run the provided SQL schema in your PostgreSQL database.
 
 ```
-
 schema.sql
+```
 
-````
+This file creates all required tables for:
 
-- This file creates all required tables.
-- **Supabase** is the default database provider, but any PostgreSQL database should work.
+* visits
+* users
+* sessions
+* analytics aggregations
+
+**Supabase** is the default recommended provider, but any **PostgreSQL database** will work.
 
 ---
 
-## 2. Tracker Script
+# 2. Add API Routes
 
-Add the tracker script to the **head** of your website or application.
-
-```html
-<Script
-  src="analytics.sakshamjain.dev/tracker.js"
-  data-tracker-id="a0b13b39-797f-4009-96bf-82f2c09e2704"
-  data-domain="a.b"
-  data-allow-localhost="true"
-  data-debug="true"
-  strategy="afterInteractive"
-/>
-````
-
-### Configuration
-
-| Attribute              | Description                                     |
-| ---------------------- | ----------------------------------------------- |
-| `data-tracker-id`      | Unique tracker ID used to identify your project |
-| `data-domain`          | Domain being tracked                            |
-| `data-allow-localhost` | Enables tracking during development             |
-| `data-debug`           | Enables debug logs                              |
-
----
-
-## 3. Stats API
-
-This API route retrieves analytics data from the database.
-
-```
-/api/stats/route.js
-```
-
-### Example Request
-
-```
-http://192.168.56.1:3000/api/stats?id=a0b13b39-797f-4009-96bf-82f2c09e2704&fromDate=2026-01-01&toDate=2026-03-08
-```
-
-### Parameters
-
-| Parameter  | Description                    |
-| ---------- | ------------------------------ |
-| `id`       | Tracker ID                     |
-| `fromDate` | Start date for analytics query |
-| `toDate`   | End date for analytics query   |
-
----
-
-## 4. Tracking API
-
-This endpoint records visit data sent by the tracker script.
+Copy the API files into your project:
 
 ```
 /api/track/route.js
+/api/stats/route.js
 ```
 
-* This route is **automatically called** by `tracker.js`.
-* It collects visit data and stores it in the database.
+These routes handle:
+
+* **/api/track** → receives tracking events
+* **/api/stats** → returns analytics insights
 
 ---
 
-## Overview
+# 3. Add the Tracker Script
 
-Once installed, OpenAnalytics will:
+Place the tracker file in your **public directory**.
 
-1. Track visitor activity through `tracker.js`
-2. Send data to `/api/track`
-3. Store analytics in your database
-4. Retrieve structured insights through `/api/stats`
+```
+/public/tracker.js
+```
 
-You can then use the returned data to build **custom dashboards, charts, and analytics panels** for your applications.
+This script automatically:
 
-## Response by /api/stats
-```js
+* creates sessions
+* tracks visits
+* sends analytics data to the API
+
+---
+
+# 4. Add the Script to Your Website
+
+Add the tracker script to your HTML or layout file.
+
+```jsx
+<Script
+  src="/tracker.js"
+  data-tracker-id="a0b13b39-797f-4009-96bf-82f2c09e2704"
+  data-domain="example.com"
+  strategy="afterInteractive"
+  data-allow-localhost="true"
+  data-debug="true"
+/>
+```
+
+### Available Options
+
+| Attribute              | Description                         |
+| ---------------------- | ----------------------------------- |
+| `data-tracker-id`      | Unique tracking ID                  |
+| `data-domain`          | Domain being tracked                |
+| `data-allow-localhost` | Enables tracking during development |
+| `data-debug`           | Enables console debug logs          |
+
+---
+
+# Built-in Dashboard
+
+A **basic analytics dashboard** is included in:
+
+```
+app/page.js
+```
+
+This dashboard demonstrates how to visualize data returned from `/api/stats`.
+
+Developers can modify it or build their own analytics UI.
+
+---
+
+# API Response Example
+
+Example response from `/api/stats`:
+
+```json
 {
-    "success": true,
-    "data": {
-        "totalVisits": 5,
-        "uniqueVisitors": 2,
-        "totalSessions": 4,
-        "bounceRate": "25.0%",
-        "avgVisitsPerUser": "2.50",
-        "avgTimeSpent": "3621.60",
-        "visitedPages": {
-            "/": 4,
-            "/abc": 1
-        },
-        "countries": {
-            "India": 5
-        },
-        "cities": {
-            "Nagpur": 5
-        },
-        "devices": {
-            "Desktop": 2
-        },
-        "browsers": {
-            "Chrome": 2
-        },
-        "oses": {
-            "Windows": 2
-        },
-        "referrers": {
-            "Direct": 5
-        },
-        "graph": [
-            {
-                "label": "Mar 1",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 2",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 3",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 4",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 5",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 6",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 7",
-                "visits": 0,
-                "users": 0
-            },
-            {
-                "label": "Mar 8",
-                "visits": 5,
-                "users": 2
-            }
-        ],
-        "bucketMode": "day"
-    }
+  "success": true,
+  "data": {
+    "totalVisits": 5,
+    "uniqueVisitors": 2,
+    "totalSessions": 4,
+    "bounceRate": "25.0%",
+    "avgVisitsPerUser": "2.50",
+    "avgTimeSpent": "3621.60",
+    "visitedPages": {
+      "/": 4,
+      "/abc": 1
+    },
+    "countries": {
+      "India": 5
+    },
+    "cities": {
+      "Nagpur": 5
+    },
+    "devices": {
+      "Desktop": 2
+    },
+    "browsers": {
+      "Chrome": 2
+    },
+    "oses": {
+      "Windows": 2
+    },
+    "referrers": {
+      "Direct": 5
+    },
+    "graph": [
+      {
+        "label": "Mar 1",
+        "visits": 0,
+        "users": 0
+      },
+      {
+        "label": "Mar 8",
+        "visits": 5,
+        "users": 2
+      }
+    ],
+    "bucketMode": "day"
+  }
 }
-````
+```
+
+---
+
+# Use Cases
+
+OpenAnalytics can be used for:
+
+* **Self-hosted analytics dashboards**
+* **SaaS analytics panels**
+* **Privacy-focused website analytics**
+* **Developer tools**
+* **Internal product analytics**
+
+---
+
+# Advantages
+
+Why use OpenAnalytics?
+
+* **Self-hosted**
+* **Open source**
+* **No vendor lock-in**
+* **Custom dashboards**
+* **Full data ownership**
+* **Lower cost than SaaS analytics**
+
+---
+
+# Roadmap (Suggested)
+
+Future improvements could include:
+
+* Real-time analytics
+* Event tracking
+* Conversion tracking
+* Bot filtering
+* GDPR privacy mode
+* Multi-site support
+
+---
+
+## Overall Evaluation
+
+For a personal open-source project, this is **very strong**. Especially considering you already built:
+
+* a **web framework in Python**
+* **hardware projects**
+* now an **analytics platform**
