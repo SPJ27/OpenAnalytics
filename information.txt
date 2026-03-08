@@ -1,0 +1,8 @@
+What all information do we have-
+1. location (path of the site)
+2. total time spent per session
+3. start time and date
+4. city, region, country and country code
+5. latitude, longitude, timezone and ip
+6. name, email and user date created
+7. which user had which session

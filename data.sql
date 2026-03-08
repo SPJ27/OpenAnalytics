@@ -1,132 +1,132 @@
-CREATE TABLE IF NOT EXISTS data (
-  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  domain      text        NOT NULL,
-  creator     text        NOT NULL,
-  connected   boolean     NOT NULL DEFAULT false,
-  visits      jsonb       NOT NULL DEFAULT '{}'::jsonb,
-  users       jsonb       NOT NULL DEFAULT '{}'::jsonb,
-  created_at  timestamptz NOT NULL DEFAULT now()
+
+CREATE TABLE IF NOT EXISTS trackers (
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  domain     text        NOT NULL,
+  creator    text        NOT NULL,
+  connected  boolean     NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS visits (
+  id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tracker_id   uuid        NOT NULL REFERENCES trackers(id) ON DELETE CASCADE,
+  session_id   text        NOT NULL,
+  location     text,
+  time_spent   integer     NOT NULL DEFAULT 0,
+  start_time   timestamptz NOT NULL DEFAULT now(),
+  date         timestamptz NOT NULL DEFAULT now(),
+  city         text,
+  region       text,
+  country      text,
+  country_code text,
+  latitude     numeric,
+  longitude    numeric,
+  timezone     text,
+  ip           text,
+  UNIQUE (tracker_id, session_id, location)
+);
 
-CREATE INDEX IF NOT EXISTS idx_data_domain    ON data (domain);
-CREATE INDEX IF NOT EXISTS idx_data_creator   ON data (creator);
-CREATE INDEX IF NOT EXISTS idx_data_id_domain ON data (id, domain);
+CREATE TABLE IF NOT EXISTS users (
+  id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tracker_id   uuid        NOT NULL REFERENCES trackers(id) ON DELETE CASCADE,
+  user_id      text        NOT NULL,
+  name         text,
+  email        text,
+  date_created timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tracker_id, user_id)
+);
 
+CREATE TABLE IF NOT EXISTS user_visits (
+  user_id  uuid NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+  visit_id uuid NOT NULL REFERENCES visits(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, visit_id)
+);
 
-CREATE OR REPLACE FUNCTION upsert_visit(
-  p_id         uuid,
-  p_domain     text,
-  p_session_id text,
-  p_time_spent integer,
-  p_location   text,
-  p_start_time timestamptz DEFAULT now()
-)
-RETURNS void AS $$
-BEGIN
-  UPDATE data
-  SET
-    connected = true,
-    visits = jsonb_set(
-      COALESCE(visits, '{}'::jsonb),
-      ARRAY[p_session_id],
-      CASE
-        WHEN visits ? p_session_id THEN
-          jsonb_build_object(
-            'date',      visits -> p_session_id -> 'date',
-            'timeSpent', (COALESCE((visits -> p_session_id ->> 'timeSpent')::integer, 0)) + p_time_spent,
-            'startTime', visits -> p_session_id -> 'startTime',
-            'location',  visits -> p_session_id -> 'location'
-          )
-        ELSE
-          jsonb_build_object(
-            'date',      to_jsonb(now()::text),
-            'timeSpent', p_time_spent,
-            'startTime', to_jsonb(p_start_time::text),
-            'location',  to_jsonb(p_location)
-          )
-      END
-    )
-  WHERE id = p_id
-    AND domain = p_domain;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Tracker not found for id=% domain=%', p_id, p_domain;
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
+CREATE INDEX IF NOT EXISTS idx_visits_tracker_id  ON visits      (tracker_id);
+CREATE INDEX IF NOT EXISTS idx_visits_session_id  ON visits      (session_id);
+CREATE INDEX IF NOT EXISTS idx_visits_location    ON visits      (location);
+CREATE INDEX IF NOT EXISTS idx_visits_country     ON visits      (country_code);
+CREATE INDEX IF NOT EXISTS idx_users_tracker_id   ON users       (tracker_id);
+CREATE INDEX IF NOT EXISTS idx_users_email        ON users       (email);
+CREATE INDEX IF NOT EXISTS idx_user_visits_user   ON user_visits (user_id);
+CREATE INDEX IF NOT EXISTS idx_user_visits_visit  ON user_visits (visit_id);
 
 
-CREATE OR REPLACE FUNCTION upsert_user(
-  p_id         uuid,
-  p_domain     text,
-  p_user_id    text,
-  p_session_id text,
-  p_name       text DEFAULT null,
-  p_email      text DEFAULT null
+CREATE OR REPLACE FUNCTION upsert_visit_and_user(
+  p_tracker_id   uuid,
+  p_session_id   text,
+  p_time_spent   integer,
+  p_location     text,
+  p_start_time   timestamptz,
+  p_user_id      text    DEFAULT null,
+  p_name         text    DEFAULT null,
+  p_email        text    DEFAULT null,
+  p_city         text    DEFAULT null,
+  p_region       text    DEFAULT null,
+  p_country      text    DEFAULT null,
+  p_country_code text    DEFAULT null,
+  p_latitude     numeric DEFAULT null,
+  p_longitude    numeric DEFAULT null,
+  p_timezone     text    DEFAULT null,
+  p_ip           text    DEFAULT null
 )
 RETURNS void AS $$
 DECLARE
-  v_current_user jsonb;
-  v_visit_ids    jsonb;
+  v_visit_id uuid;
+  v_user_id  uuid;
 BEGIN
-  SELECT COALESCE(users -> p_user_id, '{}'::jsonb)
-  INTO v_current_user
-  FROM data
-  WHERE id = p_id
-    AND domain = p_domain
-  FOR UPDATE;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Tracker not found for id=% domain=%', p_id, p_domain;
+  IF NOT EXISTS (SELECT 1 FROM trackers WHERE id = p_tracker_id) THEN
+    RAISE EXCEPTION 'Tracker not found: %', p_tracker_id;
   END IF;
 
-  v_visit_ids := COALESCE(v_current_user -> 'visitIds', '[]'::jsonb);
-
-  IF NOT v_visit_ids @> to_jsonb(p_session_id) THEN
-    v_visit_ids := v_visit_ids || to_jsonb(p_session_id);
-  END IF;
-
-  UPDATE data
-  SET users = jsonb_set(
-    COALESCE(users, '{}'::jsonb),
-    ARRAY[p_user_id],
-    CASE
-      WHEN users ? p_user_id THEN
-        jsonb_build_object(
-          'name',        COALESCE(to_jsonb(p_name), users -> p_user_id -> 'name'),
-          'email',       COALESCE(to_jsonb(p_email), users -> p_user_id -> 'email'),
-          'visitIds',    v_visit_ids,
-          'dateCreated', users -> p_user_id -> 'dateCreated'
-        )
-      ELSE
-        -- New user: insert all fields
-        jsonb_build_object(
-          'name',        to_jsonb(p_name),
-          'email',       to_jsonb(p_email),
-          'visitIds',    v_visit_ids,
-          'dateCreated', to_jsonb(now()::text)
-        )
-    END
+  INSERT INTO visits (
+    tracker_id, session_id, location, time_spent, start_time, date,
+    city, region, country, country_code, latitude, longitude, timezone, ip
   )
-  WHERE id = p_id
-    AND domain = p_domain;
+  VALUES (
+    p_tracker_id, p_session_id, p_location, p_time_spent, p_start_time, now(),
+    p_city, p_region, p_country, p_country_code, p_latitude, p_longitude, p_timezone, p_ip
+  )
+  ON CONFLICT (tracker_id, session_id, location)
+  DO UPDATE SET
+    time_spent = visits.time_spent + EXCLUDED.time_spent
+  RETURNING id INTO v_visit_id;
+
+  UPDATE trackers SET connected = true WHERE id = p_tracker_id;
+
+  IF p_user_id IS NOT NULL THEN
+    INSERT INTO users (tracker_id, user_id, name, email)
+    VALUES (p_tracker_id, p_user_id, p_name, p_email)
+    ON CONFLICT (tracker_id, user_id)
+    DO UPDATE SET
+      name  = COALESCE(EXCLUDED.name,  users.name),
+      email = COALESCE(EXCLUDED.email, users.email)
+    RETURNING id INTO v_user_id;
+
+    IF v_visit_id IS NOT NULL THEN
+      INSERT INTO user_visits (user_id, visit_id)
+      VALUES (v_user_id, v_visit_id)
+      ON CONFLICT DO NOTHING;
+    END IF;
+  END IF;
+
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT 'table' AS type, table_name AS name
-FROM information_schema.tables
-WHERE table_schema = 'public' AND table_name = 'data'
+
+
+SELECT 'table'    AS type, table_name    AS name FROM information_schema.tables
+WHERE  table_schema = 'public'
+AND    table_name IN ('trackers','visits','users','user_visits')
 
 UNION ALL
 
-SELECT 'function', routine_name
-FROM information_schema.routines
-WHERE routine_schema = 'public'
-  AND routine_name IN ('upsert_visit', 'upsert_user')
+SELECT 'function', routine_name FROM information_schema.routines
+WHERE  routine_schema = 'public'
+AND    routine_name = 'upsert_visit_and_user'
 
 UNION ALL
 
-SELECT 'index', indexname
-FROM pg_indexes
-WHERE tablename = 'data';
+SELECT 'index', indexname FROM pg_indexes
+WHERE  tablename IN ('trackers','visits','users','user_visits');

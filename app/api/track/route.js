@@ -3,18 +3,32 @@ import { cookies } from "next/headers";
 
 export async function POST(req) {
   try {
-    // ── 1. Parse body ────────────────────────────────────────────────────────
     const body = await req.json();
     const {
-      id,          // tracker UUID
-      domain,      // e.g. "yoursite.com"
-      session_id,  // UUID from tracker cookie (30 min expiry)
-      user_id,     // UUID from tracker cookie (365 day expiry)
-      time_spent,  // seconds (0 on initial ping, 30 on interval, remainder on close)
-      location,    // window.location.pathname e.g. "/about"
-      start_time,  // ISO string — when the page first loaded
-      name,        // optional — from window.tracker.identify()
-      email,       // optional — from window.tracker.identify()
+      id,
+      domain,
+      session_id,
+      user_id,
+      time_spent,
+      location,
+      start_time,
+      name,
+      email,
+      // geo
+      city,
+      region,
+      country,
+      country_code,
+      latitude,
+      longitude,
+      timezone,
+      ip,
+      // device
+      device,
+      browser,
+      os,
+      // referrer
+      referrer,
     } = body;
 
     if (!id || !domain || !session_id) {
@@ -26,6 +40,7 @@ export async function POST(req) {
 
     const supabase = createClient(await cookies());
 
+    // Verify tracker exists
     const { error: authError } = await supabase
       .from("trackers")
       .select("id")
@@ -40,17 +55,30 @@ export async function POST(req) {
       );
     }
 
-    // ── 4. Upsert visit + user in one atomic DB call ──────────────────────────
-    // Single RPC = one round trip, no race conditions
     const { error: rpcError } = await supabase.rpc("upsert_visit_and_user", {
-      p_tracker_id: id,
-      p_session_id: session_id,
-      p_time_spent: Number(time_spent) || 0,
-      p_location:   location   ?? null,
-      p_start_time: start_time ?? new Date().toISOString(),
-      p_user_id:    user_id    ?? null,
-      p_name:       name       ?? null,
-      p_email:      email      ?? null,
+      p_tracker_id:   id,
+      p_session_id:   session_id,
+      p_time_spent:   Number(time_spent) || 0,
+      p_location:     location      ?? null,
+      p_start_time:   start_time    ?? new Date().toISOString(),
+      p_user_id:      user_id       ?? null,
+      p_name:         name          ?? null,
+      p_email:        email         ?? null,
+      // geo
+      p_city:         city          ?? null,
+      p_region:       region        ?? null,
+      p_country:      country       ?? null,
+      p_country_code: country_code  ?? null,
+      p_latitude:     latitude      ?? null,
+      p_longitude:    longitude     ?? null,
+      p_timezone:     timezone      ?? null,
+      p_ip:           ip            ?? null,
+      // device
+      p_device:       device        ?? null,
+      p_browser:      browser       ?? null,
+      p_os:           os            ?? null,
+      // referrer
+      p_referrer:     referrer      ?? null,
     });
 
     if (rpcError) {

@@ -7,11 +7,13 @@ export default function RootLayout({ children }) {
         {children}
         <Script
           src="/tracker.js"
-          data-tracker-id="f849ff7d-f43c-487d-8f37-e871b1a23999"
+          data-tracker-id="a0b13b39-797f-4009-96bf-82f2c09e2704"
           data-domain="a.b"
           data-allow-localhost="true"
           data-debug="true"
           strategy="afterInteractive"
+          email="test@test.com"
+          name="test_user"
         />
       </body>
     </html>
