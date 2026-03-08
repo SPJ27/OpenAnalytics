@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ["latin"] });
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <title>OpenAnalytics - A self-hosted analytics platform</title>
+      </head>
       <body className={inter.className}>
         {children}
         <Script
