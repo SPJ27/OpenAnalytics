@@ -24,7 +24,7 @@ OpenAnalytics provides a wide range of useful statistics:
    - Browser
    - Operating system
 9. **Referrer Data** – Source of incoming traffic  
-10. **Visualization Data** – Pre-formatted data compatible with libraries like:
+10. **Visualization Data** – Pre-formatted data with automatic day, month and week headers compatible with libraries like:
    - **Recharts**
    - **Chart.js**
 
