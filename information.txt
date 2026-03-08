@@ -6,3 +6,15 @@ What all information do we have-
 5. latitude, longitude, timezone and ip
 6. name, email and user date created
 7. which user had which session
+
+Data-
+1. visits
+2. unique visitors
+3. bounce rate
+4. total sessions
+5. average visits per user
+6. average time spent
+7. visited pages
+8. country, city, device, browser, os
+9. referrer
+10. data for recharts, charts.js

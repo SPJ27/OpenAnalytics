@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+```markdown
+# OpenAnalytics
 
-## Getting Started
+## What is OpenAnalytics?
 
-First, run the development server:
+**OpenAnalytics** is an open-source analytics API that developers can run on their own infrastructure to reduce costs and gain detailed insights into their website or application traffic.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Instead of relying on expensive third-party analytics platforms, OpenAnalytics lets you fully control your data while still getting powerful analytics metrics and structured datasets for dashboards and visualizations.
+
+### Available Analytics Data
+
+OpenAnalytics provides a wide range of useful statistics:
+
+1. **Visits** – Total number of page visits  
+2. **Unique Visitors** – Distinct users visiting the site  
+3. **Bounce Rate** – Percentage of users leaving after one interaction  
+4. **Total Sessions** – Total tracked sessions  
+5. **Average Visits per User** – Engagement metric per user  
+6. **Average Time Spent** – Average session duration  
+7. **Visited Pages** – Most visited routes or pages  
+8. **Visitor Information**
+   - Country
+   - City
+   - Device type
+   - Browser
+   - Operating system
+9. **Referrer Data** – Source of incoming traffic  
+10. **Visualization Data** – Pre-formatted data compatible with libraries like:
+   - **Recharts**
+   - **Chart.js**
+
+---
+
+# Installation
+
+There are **four main components** required to install OpenAnalytics.
+
+## 1. Database Schema
+
+Run the database schema in your preferred database.
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+schema.sql
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+````
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- This file creates all required tables.
+- **Supabase** is the default database provider, but any PostgreSQL database should work.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 2. Tracker Script
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Add the tracker script to the **head** of your website or application.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```html
+<Script
+  src="/tracker.js"
+  data-tracker-id="a0b13b39-797f-4009-96bf-82f2c09e2704"
+  data-domain="a.b"
+  data-allow-localhost="true"
+  data-debug="true"
+  strategy="afterInteractive"
+/>
+````
 
-## Deploy on Vercel
+### Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Attribute              | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `data-tracker-id`      | Unique tracker ID used to identify your project |
+| `data-domain`          | Domain being tracked                            |
+| `data-allow-localhost` | Enables tracking during development             |
+| `data-debug`           | Enables debug logs                              |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 3. Stats API
+
+This API route retrieves analytics data from the database.
+
+```
+/api/stats/route.js
+```
+
+### Example Request
+
+```
+http://192.168.56.1:3000/api/stats?id=a0b13b39-797f-4009-96bf-82f2c09e2704&fromDate=2026-01-01&toDate=2026-03-08
+```
+
+### Parameters
+
+| Parameter  | Description                    |
+| ---------- | ------------------------------ |
+| `id`       | Tracker ID                     |
+| `fromDate` | Start date for analytics query |
+| `toDate`   | End date for analytics query   |
+
+---
+
+## 4. Tracking API
+
+This endpoint records visit data sent by the tracker script.
+
+```
+/api/track/route.js
+```
+
+* This route is **automatically called** by `tracker.js`.
+* It collects visit data and stores it in the database.
+
+---
+
+## Overview
+
+Once installed, OpenAnalytics will:
+
+1. Track visitor activity through `tracker.js`
+2. Send data to `/api/track`
+3. Store analytics in your database
+4. Retrieve structured insights through `/api/stats`
+
+You can then use the returned data to build **custom dashboards, charts, and analytics panels** for your applications.
+
+```
+```

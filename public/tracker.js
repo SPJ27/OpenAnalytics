@@ -1,30 +1,7 @@
-/*!
- * tracker.js v5.3
- *
- * ── SETUP ───────────────────────────────────────────────────────────────────
- *
- * Plain HTML:
- *   <script src="/tracker.js" data-tracker-id="UUID" data-domain="yoursite.com"></script>
- *
- * Next.js layout.js:
- *   <Script src="/tracker.js" data-tracker-id="UUID" data-domain="yoursite.com" strategy="afterInteractive" />
- *
- * ── OPTIONAL ATTRIBUTES ─────────────────────────────────────────────────────
- *   data-api-url="https://..."      Override API endpoint (default: /api/track)
- *   data-allow-localhost="true"     Enable on localhost
- *   data-debug="true"               Log everything to console
- *
- * ── AFTER LOGIN ─────────────────────────────────────────────────────────────
- *   window.tracker.identify({ name: "Jane", email: "jane@example.com" })
- *
- * ── OPT OUT ──────────────────────────────────────────────────────────────────
- *   localStorage.setItem("tracker_ignore", "true")
- */
 
 !function (t) {
   "use strict";
 
-  // ── 1. Read config from script tag ────────────────────────────────────────
   if (!t) {
     console.warn("[tracker] document.currentScript is null. Tracking stopped.");
     return;
@@ -37,11 +14,9 @@
   var CUSTOM_API  = t.getAttribute("data-api-url")         || "";
   t = null;
 
-  // ── 2. Logging ────────────────────────────────────────────────────────────
   function log()  { if (DEBUG) console.log.apply(console,  ["[tracker]"].concat([].slice.call(arguments))); }
   function warn() { if (DEBUG) console.warn.apply(console, ["[tracker]"].concat([].slice.call(arguments))); }
 
-  // ── 3. Resolve API URL ────────────────────────────────────────────────────
   var API_URL;
   if (CUSTOM_API) {
     try       { API_URL = new URL(CUSTOM_API).href; }
@@ -50,7 +25,6 @@
     API_URL = new URL("/api/track", window.location.origin).href;
   }
 
-  // ── 4. Enabled flag ───────────────────────────────────────────────────────
   var enabled = true;
   var disabledReason = "";
 
@@ -60,7 +34,6 @@
     warn("Disabled —", reason);
   }
 
-  // ── 5. Guards ─────────────────────────────────────────────────────────────
   function isLocalhost(h) {
     if (!h) return false;
     var host = h.toLowerCase();
@@ -72,7 +45,6 @@
   if (!ALLOW_LOCAL && isLocalhost(window.location.hostname)) disable("On localhost. Add data-allow-localhost='true' to enable.");
   if (window !== window.parent)                              disable("Inside iframe.");
 
-  // ── 6. Bot detection ──────────────────────────────────────────────────────
   function isBot() {
     try {
       if (window.navigator.webdriver || window.callPhantom || window._phantom || window.__nightmare) return true;
@@ -98,12 +70,10 @@
 
   if (isBot()) disable("Bot detected.");
 
-  // ── 7. Opt-out ────────────────────────────────────────────────────────────
   try {
     if (localStorage.getItem("tracker_ignore") === "true") disable("Opt-out flag in localStorage.");
   } catch (e) {}
 
-  // ── 8. Cookies ────────────────────────────────────────────────────────────
   function setCookie(name, value, days) {
     var expires = "";
     if (days) {
@@ -128,7 +98,6 @@
     document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
   }
 
-  // ── 9. UUID ───────────────────────────────────────────────────────────────
   function uuid() {
     if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -137,14 +106,12 @@
     });
   }
 
-  // ── 10. User ID ───────────────────────────────────────────────────────────
   function getUserId() {
     var id = getCookie("_tracker_uid");
     if (!id) { id = uuid(); setCookie("_tracker_uid", id, 365); }
     return id;
   }
 
-  // ── 11. Session ID ────────────────────────────────────────────────────────
   function getSessionId() {
     var cookieId  = getCookie("_tracker_sid");
     var storageId = null;
@@ -170,14 +137,9 @@
   var SESSION_ID = getSessionId();
   var START_TIME  = new Date().toISOString();
   var totalPinged = 0;
-
-  // ── 12. Device / Browser / OS detection ───────────────────────────────────
-  // Parsed once at startup from navigator.userAgent.
-  // Sent with every ping — stored only on the first INSERT (not overwritten).
   function parseUserAgent() {
     var ua = navigator.userAgent || "";
 
-    // ── Device type ──────────────────────────────────────────────────────────
     var device = "Desktop";
     if (/tablet|ipad|playbook|silk/i.test(ua)) {
       device = "Tablet";
@@ -185,7 +147,6 @@
       device = "Mobile";
     }
 
-    // ── Browser ───────────────────────────────────────────────────────────────
     var browser = "Unknown";
     if (/edg\//i.test(ua))                          browser = "Edge";
     else if (/opr\//i.test(ua))                     browser = "Opera";
@@ -195,7 +156,6 @@
     else if (/trident|msie/i.test(ua))              browser = "IE";
     else if (/samsung/i.test(ua))                   browser = "Samsung Browser";
 
-    // ── OS ────────────────────────────────────────────────────────────────────
     var os = "Unknown";
     if (/windows nt/i.test(ua))                     os = "Windows";
     else if (/iphone os|ipad os/i.test(ua))         os = "iOS";
@@ -209,20 +169,13 @@
 
   var deviceInfo = parseUserAgent();
   log("Device info:", deviceInfo);
-
-  // ── 13. Referrer ──────────────────────────────────────────────────────────
-  // document.referrer is the URL the user came from.
-  // We extract just the hostname (e.g. "google.com") to keep it clean.
-  // Empty string means direct traffic (typed URL, bookmark, or no referrer header).
-  // Only captured once at session start — SPA navigations don't change the referrer.
   function parseReferrer() {
     var ref = document.referrer;
     if (!ref) return null;
     try {
       var url = new URL(ref);
-      // Ignore self-referrals (navigating within the same site)
       if (url.hostname === window.location.hostname) return null;
-      return url.hostname; // e.g. "google.com", "twitter.com"
+      return url.hostname; 
     } catch (e) {
       return null;
     }
@@ -231,7 +184,6 @@
   var REFERRER = parseReferrer();
   log("Referrer:", REFERRER || "(direct)");
 
-  // ── 14. IP Geolocation ────────────────────────────────────────────────────
   var geoData = null;
 
   function fetchGeo(callback) {
@@ -274,7 +226,6 @@
     xhr.send();
   }
 
-  // ── 15. Payload builder ───────────────────────────────────────────────────
   function buildPayload(time_spent, extras) {
     var base = {
       id:           TRACKER_ID,
@@ -284,7 +235,6 @@
       time_spent:   time_spent,
       location:     window.location.pathname,
       start_time:   START_TIME,
-      // geo
       city:         geoData ? geoData.city         : null,
       region:       geoData ? geoData.region       : null,
       country:      geoData ? geoData.country      : null,
@@ -293,11 +243,9 @@
       longitude:    geoData ? geoData.longitude    : null,
       timezone:     geoData ? geoData.timezone     : null,
       ip:           geoData ? geoData.ip           : null,
-      // device
       device:       deviceInfo.device,
       browser:      deviceInfo.browser,
       os:           deviceInfo.os,
-      // referrer
       referrer:     REFERRER,
     };
     if (extras) {
@@ -308,7 +256,6 @@
     return JSON.stringify(base);
   }
 
-  // ── 16. XHR send ──────────────────────────────────────────────────────────
   function send(time_spent, extras) {
     if (!enabled) { log("Blocked —", disabledReason); return; }
     if (isBot())  { log("Blocked — bot."); return; }
@@ -344,10 +291,8 @@
     }
   }
 
-  // ── 18. Interval ping every 30s ───────────────────────────────────────────
   setInterval(function () { send(30); }, 30000);
 
-  // ── 19. Beacon on tab hide ────────────────────────────────────────────────
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") {
       var total     = Math.floor((Date.now() - new Date(START_TIME).getTime()) / 1000);
@@ -356,7 +301,6 @@
     }
   });
 
-  // ── 20. SPA route change ──────────────────────────────────────────────────
   var lastPath     = window.location.pathname;
   var lastPingTime = 0;
   var debounce     = null;
@@ -368,7 +312,6 @@
     lastPath     = current;
     lastPingTime = now;
 
-    // Reset per-page time tracking
     START_TIME  = new Date().toISOString();
     totalPinged = 0;
 
@@ -386,7 +329,6 @@
   };
   window.addEventListener("popstate", onRouteChange);
 
-  // ── 21. Public API ────────────────────────────────────────────────────────
   window.tracker = {
     identify: function (opts) {
       opts = opts || {};
@@ -401,7 +343,6 @@
     referrer:  REFERRER,
   };
 
-  // ── 22. Fetch geo then fire initial ping ───────────────────────────────────
   fetchGeo(function () {
     send(0);
     log("Initialised | tracker:", TRACKER_ID, "| domain:", DOMAIN);

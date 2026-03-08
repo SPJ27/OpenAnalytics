@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS trackers (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   domain     text        NOT NULL,
@@ -15,6 +14,7 @@ CREATE TABLE IF NOT EXISTS visits (
   time_spent   integer     NOT NULL DEFAULT 0,
   start_time   timestamptz NOT NULL DEFAULT now(),
   date         timestamptz NOT NULL DEFAULT now(),
+
   city         text,
   region       text,
   country      text,
@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS visits (
   longitude    numeric,
   timezone     text,
   ip           text,
+  device       text,  
+  browser      text,   
+  os           text,   
+  referrer     text, 
   UNIQUE (tracker_id, session_id, location)
 );
 
@@ -46,11 +50,13 @@ CREATE INDEX IF NOT EXISTS idx_visits_tracker_id  ON visits      (tracker_id);
 CREATE INDEX IF NOT EXISTS idx_visits_session_id  ON visits      (session_id);
 CREATE INDEX IF NOT EXISTS idx_visits_location    ON visits      (location);
 CREATE INDEX IF NOT EXISTS idx_visits_country     ON visits      (country_code);
+CREATE INDEX IF NOT EXISTS idx_visits_device      ON visits      (device);
+CREATE INDEX IF NOT EXISTS idx_visits_browser     ON visits      (browser);
+CREATE INDEX IF NOT EXISTS idx_visits_referrer    ON visits      (referrer);
 CREATE INDEX IF NOT EXISTS idx_users_tracker_id   ON users       (tracker_id);
 CREATE INDEX IF NOT EXISTS idx_users_email        ON users       (email);
 CREATE INDEX IF NOT EXISTS idx_user_visits_user   ON user_visits (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_visits_visit  ON user_visits (visit_id);
-
 
 CREATE OR REPLACE FUNCTION upsert_visit_and_user(
   p_tracker_id   uuid,
@@ -68,7 +74,11 @@ CREATE OR REPLACE FUNCTION upsert_visit_and_user(
   p_latitude     numeric DEFAULT null,
   p_longitude    numeric DEFAULT null,
   p_timezone     text    DEFAULT null,
-  p_ip           text    DEFAULT null
+  p_ip           text    DEFAULT null,
+  p_device       text    DEFAULT null,
+  p_browser      text    DEFAULT null,
+  p_os           text    DEFAULT null,
+  p_referrer     text    DEFAULT null
 )
 RETURNS void AS $$
 DECLARE
@@ -82,11 +92,15 @@ BEGIN
 
   INSERT INTO visits (
     tracker_id, session_id, location, time_spent, start_time, date,
-    city, region, country, country_code, latitude, longitude, timezone, ip
+    city, region, country, country_code, latitude, longitude, timezone, ip,
+    device, browser, os,
+    referrer
   )
   VALUES (
     p_tracker_id, p_session_id, p_location, p_time_spent, p_start_time, now(),
-    p_city, p_region, p_country, p_country_code, p_latitude, p_longitude, p_timezone, p_ip
+    p_city, p_region, p_country, p_country_code, p_latitude, p_longitude, p_timezone, p_ip,
+    p_device, p_browser, p_os,
+    p_referrer
   )
   ON CONFLICT (tracker_id, session_id, location)
   DO UPDATE SET
@@ -116,17 +130,20 @@ $$ LANGUAGE plpgsql;
 
 
 
-SELECT 'table'    AS type, table_name    AS name FROM information_schema.tables
+SELECT 'table' AS type, table_name AS name
+FROM   information_schema.tables
 WHERE  table_schema = 'public'
 AND    table_name IN ('trackers','visits','users','user_visits')
 
 UNION ALL
 
-SELECT 'function', routine_name FROM information_schema.routines
+SELECT 'function', routine_name
+FROM   information_schema.routines
 WHERE  routine_schema = 'public'
 AND    routine_name = 'upsert_visit_and_user'
 
 UNION ALL
 
-SELECT 'index', indexname FROM pg_indexes
+SELECT 'index', indexname
+FROM   pg_indexes
 WHERE  tablename IN ('trackers','visits','users','user_visits');

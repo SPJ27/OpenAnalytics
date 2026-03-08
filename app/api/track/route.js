@@ -14,7 +14,6 @@ export async function POST(req) {
       start_time,
       name,
       email,
-      // geo
       city,
       region,
       country,
@@ -23,11 +22,9 @@ export async function POST(req) {
       longitude,
       timezone,
       ip,
-      // device
       device,
       browser,
       os,
-      // referrer
       referrer,
     } = body;
 
@@ -40,7 +37,6 @@ export async function POST(req) {
 
     const supabase = createClient(await cookies());
 
-    // Verify tracker exists
     const { error: authError } = await supabase
       .from("trackers")
       .select("id")
@@ -64,7 +60,6 @@ export async function POST(req) {
       p_user_id:      user_id       ?? null,
       p_name:         name          ?? null,
       p_email:        email         ?? null,
-      // geo
       p_city:         city          ?? null,
       p_region:       region        ?? null,
       p_country:      country       ?? null,
@@ -73,11 +68,9 @@ export async function POST(req) {
       p_longitude:    longitude     ?? null,
       p_timezone:     timezone      ?? null,
       p_ip:           ip            ?? null,
-      // device
       p_device:       device        ?? null,
       p_browser:      browser       ?? null,
       p_os:           os            ?? null,
-      // referrer
       p_referrer:     referrer      ?? null,
     });
 
