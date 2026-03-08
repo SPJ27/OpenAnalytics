@@ -1,4 +1,3 @@
-```markdown
 # OpenAnalytics
 
 ## What is OpenAnalytics?
@@ -124,5 +123,3 @@ Once installed, OpenAnalytics will:
 
 You can then use the returned data to build **custom dashboards, charts, and analytics panels** for your applications.
 
-```
-```
