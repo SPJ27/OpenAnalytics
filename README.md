@@ -242,25 +242,3 @@ Why use OpenAnalytics?
 * **Full data ownership**
 * **Lower cost than SaaS analytics**
 
----
-
-# Roadmap (Suggested)
-
-Future improvements could include:
-
-* Real-time analytics
-* Event tracking
-* Conversion tracking
-* Bot filtering
-* GDPR privacy mode
-* Multi-site support
-
----
-
-## Overall Evaluation
-
-For a personal open-source project, this is **very strong**. Especially considering you already built:
-
-* a **web framework in Python**
-* **hardware projects**
-* now an **analytics platform**
