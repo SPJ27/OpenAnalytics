@@ -409,7 +409,7 @@ export default function Page() {
   const rightMax = Math.max(0, ...rightRows.map((r) => r.value));
 
   return (
-    <div className="min-h-screen   p-6">
+    <div className="min-h-screen  text p-6">
       <div className="max-w-5xl mx-auto space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5">
