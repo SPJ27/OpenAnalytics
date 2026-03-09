@@ -23,11 +23,13 @@ import {
   FaLinux,
   FaUser,
   FaEnvelope,
-  FaHashtag,
+  FaAndroid,
   FaSort,
   FaSortUp,
   FaSortDown,
   FaSearch,
+  FaPaperclip,
+  FaMapMarker,
 } from "react-icons/fa";
 Chart.register(...registerables);
 
@@ -98,6 +100,8 @@ function getOSIcon(o) {
   if (/windows/i.test(o)) return <FaWindows className="text-gray-400" />;
   if (/macos/i.test(o)) return <FaApple className="text-gray-400" />;
   if (/linux/i.test(o)) return <FaLinux className="text-gray-400" />;
+  if (/android/i.test(o)) return <FaAndroid className="text-gray-400" />;
+  if (/ios/i.test(o)) return <FaApple className="text-gray-400" />;
   return <FaLink className="text-gray-400" />;
 }
 
@@ -118,8 +122,8 @@ function getRightRows(data, tab) {
   if (!data) return [];
   const maps = {
     Country: [data.countries, getFlag],
-    City: [data.cities, () => "📍"],
-    Page: [data.visitedPages, () => "📄"],
+    City: [data.cities, () => <FaMapMarker className="text-gray-400" />],
+    Page: [data.visitedPages, () => <FaPaperclip className="text-gray-400" />],
   };
   const [obj, iconFn] = maps[tab] || [];
   if (!obj) return [];
@@ -128,7 +132,8 @@ function getRightRows(data, tab) {
 
 // ── Avatar ─────────────────────────────────────────────────────────────────
 function Avatar({ name }) {
-  const initials = (name || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+  if (!name) return <FaUser className="text-gray-300" />;
+  const initials = (name || "Anonymous").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
   const colors = [
     "bg-blue-100 text-blue-600", "bg-purple-100 text-purple-600",
     "bg-green-100 text-green-600", "bg-orange-100 text-orange-600",
@@ -357,8 +362,8 @@ function UsersTable({ users = [] }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <Avatar name={u.name} />
-                      <span className="text-sm text-[#303030] font-medium truncate max-w-[140px]">
-                        {u.name || <span className="text-gray-300 italic">Unknown</span>}
+                      <span className="text-sm text-[#303030] font-medium truncate max-w-35">
+                        {u.name || <span className="text-gray-300 italic">Anonymous</span>}
                       </span>
                     </div>
                   </td>
@@ -397,7 +402,7 @@ function UsersTable({ users = [] }) {
                       {u.os && (
                         <span className="flex items-center gap-1.5 text-xs text-gray-400">
                           {getOSIcon(u.os)}
-                          <span className="truncate max-w-[80px]">{u.os}</span>
+                          <span className="truncate max-w-20">{u.os}</span>
                         </span>
                       )}
                     </div>
