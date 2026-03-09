@@ -1,5 +1,9 @@
 # OpenAnalytics
 
+🔗 **Live Demo:** [Analytics Page Demo](https://analytics.sakshamjain.dev?ref=github)
+
+---
+
 ## What is OpenAnalytics?
 
 **OpenAnalytics** is a lightweight **open-source analytics API** that developers can self-host to track website or application traffic.
@@ -73,7 +77,7 @@ OpenAnalytics consists of **four main components**.
 
 ---
 
-# 1. Database Setup
+## 1. Database Setup
 
 Run the provided SQL schema in your PostgreSQL database.
 
@@ -92,7 +96,7 @@ This file creates all required tables for:
 
 ---
 
-# 2. Add API Routes
+## 2. Add API Routes
 
 Copy the API files into your project:
 
@@ -108,7 +112,7 @@ These routes handle:
 
 ---
 
-# 3. Add the Tracker Script
+## 3. Add the Tracker Script
 
 Place the tracker file in your **public directory**.
 
@@ -124,7 +128,7 @@ This script automatically:
 
 ---
 
-# 4. Add the Script to Your Website
+## 4. Add the Script to Your Website
 
 Add the tracker script to your HTML or layout file.
 
@@ -147,6 +151,116 @@ Add the tracker script to your HTML or layout file.
 | `data-domain`          | Domain being tracked                |
 | `data-allow-localhost` | Enables tracking during development |
 | `data-debug`           | Enables console debug logs          |
+
+---
+
+# Auth Provider Integration
+
+OpenAnalytics can identify logged-in users and associate their name and email with tracked visits. This is handled via the `window.tracker.identify()` method exposed by the tracker script.
+
+The tracker is **completely auth-provider agnostic** — it works with Clerk, Supabase Auth, NextAuth, or any custom auth system.
+
+---
+
+## How It Works
+
+When a user visits your site, the tracker records them as an anonymous visitor. Once they authenticate, you call `identify()` to link their identity to that visit.
+
+```
+User visits site  →  anonymous tracking starts
+        ↓
+User logs in (any provider)
+        ↓
+TrackerIdentify calls window.tracker.identify()
+        ↓
+/api/track upserts the user record in the database
+```
+
+---
+
+## Step 1 — Download the Components
+
+Pre-built `TrackerIdentify` components for each supported provider are available in the repository under:
+
+```
+/components/TrackIdentify/
+  clerk.jsx
+  supabase.jsx
+  nextauth.jsx
+```
+
+Download the file for the auth provider your project uses and place it in your own `components/` directory.
+
+---
+
+## Step 2 — Add to Your Layout
+
+Import the component you downloaded and add it once to your root layout alongside the tracker script.
+
+```jsx
+// app/layout.jsx
+import Script from "next/script";
+
+// Pick the file matching your auth provider:
+import TrackerIdentify from "@/components/TrackIdentify/clerk";
+// import TrackerIdentify from "@/components/TrackIdentify/supabase";
+// import TrackerIdentify from "@/components/TrackIdentify/nextauth";
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <TrackerIdentify />
+        <Script
+          src="/tracker.js"
+          data-tracker-id="YOUR_TRACKER_ID"
+          data-domain="example.com"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+That's it. The component will automatically call `identify()` once the user's session is available.
+
+---
+
+## Supported Providers
+
+| Provider     | File to download                            | Package required     |
+| ------------ | ------------------------------------------- | -------------------- |
+| Clerk        | `/components/TrackIdentify/clerk.jsx`       | `@clerk/nextjs`      |
+| Supabase Auth| `/components/TrackIdentify/supabase.jsx`    | `@supabase/supabase-js` |
+| NextAuth     | `/components/TrackIdentify/nextauth.jsx`    | `next-auth`          |
+
+---
+
+## Using a Different Provider
+
+If you use a different auth system (Firebase, Auth0, Lucia, custom JWT, etc.), call `window.tracker.identify()` directly anywhere in your app after the user authenticates:
+
+```js
+if (typeof window !== "undefined" && window.tracker) {
+  window.tracker.identify({
+    userId: "your-app-user-id",
+    name:   "Jane Doe",
+    email:  "jane@example.com",
+  });
+}
+```
+
+### `identify()` Parameters
+
+| Parameter | Type   | Required    | Description            |
+| --------- | ------ | ----------- | ---------------------- |
+| `userId`  | string | Recommended | Your app's user ID     |
+| `name`    | string | Optional    | User's display name    |
+| `email`   | string | Optional    | User's email address   |
+
+At least one of `userId`, `name`, or `email` must be provided.
 
 ---
 
@@ -241,4 +355,3 @@ Why use OpenAnalytics?
 * **Custom dashboards**
 * **Full data ownership**
 * **Lower cost than SaaS analytics**
-

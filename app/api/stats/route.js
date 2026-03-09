@@ -12,16 +12,34 @@ export async function GET(req) {
     return Response.json({ success: false, error: "Missing id" }, { status: 400 });
   }
 
-  // ── Queries ───────────────────────────────────────────────────────────────
   let visitsQuery = supabase
     .from("visits")
     .select("*")
     .eq("tracker_id", id)
     .order("date", { ascending: false });
 
+  // Fetch users with their visit count + most recent visit metadata
+  // via the user_visits join table
   let usersQuery = supabase
     .from("users")
-    .select("*")
+    .select(`
+      id,
+      user_id,
+      name,
+      email,
+      date_created,
+      user_visits (
+        visit_id,
+        visits (
+          start_time,
+          country,
+          city,
+          device,
+          browser,
+          os
+        )
+      )
+    `)
     .eq("tracker_id", id)
     .order("date_created", { ascending: false });
 
@@ -47,9 +65,6 @@ export async function GET(req) {
     return Response.json({ success: false, error: "Database error" }, { status: 500 });
   }
 
-  // ── Date range ────────────────────────────────────────────────────────────
-  // Use the fromDate/toDate params directly — this ensures "Last 7 days" shows
-  // exactly those 7 days, not derived from sparse visit data.
   let rangeStart, rangeEnd;
 
   if (fromDate && toDate) {
@@ -65,13 +80,8 @@ export async function GET(req) {
   }
 
   const diffDays = (rangeEnd - rangeStart) / (1000 * 60 * 60 * 24);
-
-  // < 1 day  → bucket by hour  → "11 AM"
-  // 1–90 days → bucket by day  → "Mar 7"
-  // 90+ days  → bucket by month → "Mar 2026"
   const bucketMode = diffDays < 1 ? "hour" : diffDays <= 90 ? "day" : "month";
 
-  // ── Bucketing ─────────────────────────────────────────────────────────────
   function getBucketKey(isoString) {
     const d = new Date(isoString);
     if (bucketMode === "hour")  return d.toLocaleString("en-US", { hour: "numeric", hour12: true, timeZone: "UTC" });
@@ -79,8 +89,6 @@ export async function GET(req) {
     return d.toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
   }
 
-  // Pre-fill every bucket in the range with 0 so the graph has no gaps.
-  // e.g. for "Last 7 days" this guarantees all 7 days appear even with no visits.
   function generateBuckets() {
     const buckets = {};
     const cursor  = new Date(rangeStart);
@@ -116,7 +124,6 @@ export async function GET(req) {
   const visitsBuckets = generateBuckets();
   const usersBuckets  = generateBuckets();
 
-  // ── Aggregate visits ──────────────────────────────────────────────────────
   let totalTimeSpent = 0;
   const visitedPages = {};
   const countries    = {};
@@ -125,7 +132,7 @@ export async function GET(req) {
   const browsers     = {};
   const oses         = {};
   const referrers    = {};
-  const sessionMap   = {}; // used for bounce rate
+  const sessionMap   = {};
 
   function increment(obj, key) {
     if (key) obj[key] = (obj[key] || 0) + 1;
@@ -142,11 +149,9 @@ export async function GET(req) {
     increment(oses,         visit.os);
     increment(referrers,    visit.referrer || "Direct");
 
-    // Graph bucket
     const key = getBucketKey(visit.start_time);
     visitsBuckets[key] = (visitsBuckets[key] ?? 0) + 1;
 
-    // Session tracking for bounce rate
     if (!sessionMap[visit.session_id]) {
       sessionMap[visit.session_id] = { pages: 0, time: 0 };
     }
@@ -154,27 +159,51 @@ export async function GET(req) {
     sessionMap[visit.session_id].time  += visit.time_spent;
   }
 
-  // ── Aggregate users into graph ────────────────────────────────────────────
   for (const user of users) {
     const key = getBucketKey(user.date_created);
     usersBuckets[key] = (usersBuckets[key] ?? 0) + 1;
   }
 
-  // ── Graph array ───────────────────────────────────────────────────────────
   const graph = Object.keys(visitsBuckets).map(label => ({
     label,
     visits: visitsBuckets[label] || 0,
     users:  usersBuckets[label]  || 0,
   }));
 
-  // ── Bounce rate ───────────────────────────────────────────────────────────
   const totalSessions  = Object.keys(sessionMap).length;
   const bounceSessions = Object.values(sessionMap).filter(s => s.pages === 1 && s.time < 30).length;
   const bounceRate     = totalSessions > 0
     ? ((bounceSessions / totalSessions) * 100).toFixed(1) + "%"
     : "0.0%";
 
-  // ── Response ──────────────────────────────────────────────────────────────
+  // ── Build enriched user rows ─────────────────────────────────────────────
+  const enrichedUsers = users.map(u => {
+    const userVisits = (u.user_visits ?? [])
+      .map(uv => uv.visits)
+      .filter(Boolean);
+
+    // Most recent visit by start_time
+    const latestVisit = userVisits.reduce((latest, v) => {
+      if (!latest) return v;
+      return new Date(v.start_time) > new Date(latest.start_time) ? v : latest;
+    }, null);
+
+    return {
+      id:           u.id,
+      userId:       u.user_id,
+      name:         u.name  ?? null,
+      email:        u.email ?? null,
+      dateCreated:  u.date_created,
+      visits:       userVisits.length,
+      lastSeen:     latestVisit?.start_time ?? u.date_created,
+      country:      latestVisit?.country    ?? null,
+      city:         latestVisit?.city       ?? null,
+      device:       latestVisit?.device     ?? null,
+      browser:      latestVisit?.browser    ?? null,
+      os:           latestVisit?.os         ?? null,
+    };
+  });
+
   return Response.json({
     success: true,
     data: {
@@ -193,6 +222,7 @@ export async function GET(req) {
       referrers,
       graph,
       bucketMode,
+      users: enrichedUsers,
     },
   });
 }
