@@ -1,7 +1,7 @@
 import Script from "next/script";
 import "./globals.css";
 import {Inter} from "next/font/google";
-import {TrackerIdentify} from "@/components/TrackerIdentify/supabase";
+import TrackerIdentify from "@/components/TrackerIdentify/supabase";
 
 const inter = Inter({ subsets: ["latin"] });
 
